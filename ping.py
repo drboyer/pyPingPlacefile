@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+# Scrapes data from the NSSL PING project website and converts it into CSV files containing reports
+#    from the past 15, 30, and 600 minutes.
+# Forked from https://github.com/wxjoe/pyPingPlacefile
+
 # import stuff
 import urllib, re, calendar, time
 # misc prep
@@ -16,102 +21,60 @@ hailmag = []
 print("::: File downloaded, now processing PING data")
 
 for line in raw:
-    if line[:2] == 'pr': # ptype report
-        match = re.search('\[(.+?)\]\=\[(.+?)\,(.+?)\,(.+?)\,(.+?)\]',line)
-        if match:
-            daynum.append(match.group(1))
-            rawtimenum.append(int(match.group(2)))
-            timenum.append(time.strftime("%m/%d/%Y %H:%M UTC", time.gmtime(baseTime + (int(match.group(2))*60))))
-            lat.append(match.group(3))
-            lon.append(match.group(4))
-            ptype.append(match.group(5))
-            hailmag.append('-999') # placeholder
-    elif line[:2] == 'hr': # hail report
-        match = re.search('\[(.+?)\]\=\[(.+?)\,(.+?)\,(.+?)\,(.+?)\]',line)
-        if match:
-            daynum.append(match.group(1))
-            rawtimenum.append(int(match.group(2)))
-            timenum.append(time.strftime("%m/%d/%Y %H:%M UTC", time.gmtime(baseTime + (int(match.group(2))*60))))
-            lat.append(match.group(3))
-            lon.append(match.group(4))
-            hailmag.append(match.group(5))
-            ptype.append('0')
-print("::: Done processing PING data, now creating placefiles")
+  if line[:2] == 'pr': # ptype report
+    match = re.search('\[(.+?)\]\=\[(.+?)\,(.+?)\,(.+?)\,(.+?)\]',line)
+    if match:
+      daynum.append(match.group(1))
+      rawtimenum.append(int(match.group(2)))
+      timenum.append(time.strftime("%m/%d/%Y %H:%M UTC", time.gmtime(baseTime + (int(match.group(2))*60))))
+      lat.append(match.group(3))
+      lon.append(match.group(4))
+      ptype.append(match.group(5))
+      hailmag.append('-999') # placeholder
+  elif line[:2] == 'hr': # hail report
+    match = re.search('\[(.+?)\]\=\[(.+?)\,(.+?)\,(.+?)\,(.+?)\]',line)
+    if match:
+      daynum.append(match.group(1))
+      rawtimenum.append(int(match.group(2)))
+      timenum.append(time.strftime("%m/%d/%Y %H:%M UTC", time.gmtime(baseTime + (int(match.group(2))*60))))
+      lat.append(match.group(3))
+      lon.append(match.group(4))
+      hailmag.append(match.group(5))
+      ptype.append('0')
+
+print("::: Done processing PING data, now creating output files")
+print("--> Found " + str(len(daynum)) + " total reports")
 
 # post-processing to grab latest x hours
 minTime = min(rawtimenum)
 maxTime = max(rawtimenum)
 nowMinutes = (nowTime - baseTime) / 60
 times = {}
-#times[15] = nowMinutes - 15
-#times[30] = nowMinutes - 30
+times[15] = nowMinutes - 15
+times[30] = nowMinutes - 30
 times[600] = nowMinutes - 600
 ### Step 2: Create the placefile ##################################################
 for t in times.keys():
-    # open placefile to write
-    f = open('ping-' + str(t) + 'min.txt', 'w')
-    # write basic header stuff for placefile
-    f.write('Title: Latest ' + str(t) + 'min PING reports\n')
-    f.write('Refresh: 5\n') # refresh time in minutes
-    f.write('Color: 255 255 255\n') # default color to be used
-    f.write('IconFile: 1, 15, 15, 8, 8, "pingIcons.png"\n') 
-    # fileNum, width, height, hotX, hotY, fileName
-    f.write('Font: 1, 11, 1, "Courier New"\n') # whatever
-    message = "; Created by Joe Moore \n; Generated at " + time.strftime("%x %X %Z") + "\n; Found " + str(len(daynum)) + " total reports\n; Made with Python!\n; Public Domain"
-    f.write(message + '\n\n')
-    reports = 0
-    # Now let's write the actual data!
-    for i in range(len(daynum)):
-        if rawtimenum[i] > times[t]:
-            reports += 1
-            f.write('Object: ' + lat[i] + ', ' + lon[i] + '\n')
-            # Everything else must have a tab! I think!
-            f.write('Threshold: 999\n') # Display at any zoom level (?)
-            if ptype[i] == '0': # if hail
-                f.write(' Icon: 0, 0, 000, 1, ' + str(int(ptype[i])+1) + ', "Time: ' + timenum[i] + '\\nPtype: ' + ptypeLst[int(ptype[i])] + '\\nHail Size: ' + str(float(hailmag[i])/4.) + ' inches"\n')
-                f.write(' Text: 0, -15, 1, "' + str(float(hailmag[i])/4.) + '" "\n')
-            else: # else, any other ptype
-                f.write(' Icon: 0, 0, 000, 1, ' + str(int(ptype[i])+1) + ', "Time: ' + timenum[i] + '\\nPtype: ' + ptypeLst[int(ptype[i])] + '"\n')
-            f.write('End:\n\n')
+  # For now just print out the report raw data
+  print str(t)+"-min PING repotrts"
+  filename = "csv/"+str(t)+"-min_ping_rpts.csv"
+  fh = open(filename, 'w')
+  reports = 0
+  for i in range(len(daynum)):
+    if(rawtimenum[i] > times[t]):
+      reports += 1
+      rptPtype = int(ptype[i])
+      if(rptPtype <= 12):
+        #print "Report "+str(i)+": Lat="+str(lat[i])+", Lon="+str(lon[i])+", Type="+str(ptypeLst[rptPtype])+", Time="+timenum[i]
+        
+        reportArr = [lat[i], lon[i], ptypeLst[rptPtype], timenum[i]]
+        if(rptPtype == 0):
+          reportArr.append(hailmag[i])
 
-    f.write('; Plotted ' + str(reports) + ' reports')
-    f.close()
-    log = open(str(t) + 'ALLreportCount.txt', 'a')
-    log.write(time.strftime("%x %X %Z") + ' ' + str(reports) + '\n')
-    log.close()
+        reportStr = ','.join(reportArr)
+        fh.write(reportStr+"\n")
 
-print("::: Done writing ALL type Placefiles")
+  fh.close()
+  print("--> Wrote "+str(reports)+" reports to file "+filename)
 
-# Now create hail-only placefiles
-for t in times.keys():
-    # open placefile to write
-    h = open('ping-hail-' + str(t) + 'min.txt', 'w')
-    # write basic header stuff for placefile
-    h.write('Title: Latest ' + str(t) + 'min PING Hail reports\n')
-    h.write('Refresh: 5\n') # refresh time in minutes
-    h.write('Color: 255 255 255\n') # default color to be used
-    h.write('IconFile: 1, 15, 15, 8, 8, "pingIcons.png"\n') 
-    # fileNum, width, height, hotX, hotY, fileName
-    h.write('Font: 1, 11, 1, "Courier New"\n') # whatever
-    message = "; Created by Joe Moore \n; Generated at " + time.strftime("%x %X %Z") + "\n; Found " + str(len(daynum)) + " total reports\n; Made with Python!\n; Public Domain"
-    h.write(message + '\n\n')
-    reports = 0
-    # Now let's write the actual data!
-    for i in range(len(daynum)):
-        if rawtimenum[i] > times[t] and ptype[i] == '0':
-            reports += 1
-            h.write('Object: ' + lat[i] + ', ' + lon[i] + '\n')
-            h.write('Threshold: 999\n') # Display at any zoom level (?)
-            h.write(' Icon: 0, 0, 000, 1, ' + str(int(ptype[i])+1) + ', "Time: ' + timenum[i] + '\\nHail Size: ' + str(float(hailmag[i])/4.) + ' inches"\n')
-            h.write(' Text: 0, -15, 1, "' + str(float(hailmag[i])/4.) + '" "\n')
-            # or, for hail size on the ball
-            #h.write(' Text: 0, 0, 1, "' + str(float(hailmag[i])/4.) + '" "\n')
-            h.write('End:\n\n')
-    h.write('; Plotted ' + str(reports) + ' reports')
-    h.close()
-    log = open(str(t) + 'HAILreportCount.txt', 'a')
-    log.write(time.strftime("%x %X %Z") + ' ' + str(reports) + '\n')
-    log.close()
-
-print("::: Done writing HAIL ONLY Placefiles")
-print("::: All done!")
+print("::: Done writing all output files.")

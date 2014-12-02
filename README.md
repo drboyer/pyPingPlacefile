@@ -6,12 +6,13 @@ Creates a GR placefile of PING data
 How it works:
 -Downloads raw HTML from PING Display page
 -Goes through ptype and hail reports, putting data into lists
--Outputs a placefile for as many timeframes as specified (eg. last x minutes)
+-Outputs a CSVs for reports received in the past 15, 30, and 600 minutes
 
-Currently, will output placefiles for ALL precip types (including hail) and a seperate version of only hail. Can easily edit code to display only specific types.
+All reports are currently exported as CSVs in the format `latitude,longitude,preciptype,reporttime,hailsize`.
+Hail size is only proivded if the preciptype is hail, logically.
 
-I apologize for the icon file included - I am no graphic artist! 
+The pingIcons.png is currently an unused iconset left over from forking this code from the original project.
 
-To see realtime output, visit http://gr.wxjoe.com
-
-For questions/comments/concerns/complaints/etc, please let me know via Twitter (@wxjoe) or email (joe at my twitter username dot com).
+**Future Enhancements**
+* Output to KML and/or GeoJSON in addition to CSV
+* Add a map page with which these reports can be viewed.
